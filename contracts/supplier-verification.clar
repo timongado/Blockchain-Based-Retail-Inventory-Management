@@ -1,30 +1,42 @@
+;; Supplier Verification Contract
+;; This contract validates legitimate product manufacturers
 
-;; title: supplier-verification
-;; version:
-;; summary:
-;; description:
+(define-data-var admin principal tx-sender)
 
-;; traits
-;;
+;; Map to store verified suppliers
+(define-map verified-suppliers principal bool)
 
-;; token definitions
-;;
+;; Error codes
+(define-constant ERR-NOT-AUTHORIZED u100)
+(define-constant ERR-ALREADY-VERIFIED u101)
+(define-constant ERR-NOT-FOUND u102)
 
-;; constants
-;;
+;; Check if caller is admin
+(define-private (is-admin)
+  (is-eq tx-sender (var-get admin)))
 
-;; data vars
-;;
+;; Add a new verified supplier
+(define-public (add-supplier (supplier-address principal))
+  (begin
+    (asserts! (is-admin) (err ERR-NOT-AUTHORIZED))
+    (asserts! (not (default-to false (map-get? verified-suppliers supplier-address)))
+              (err ERR-ALREADY-VERIFIED))
+    (ok (map-set verified-suppliers supplier-address true))))
 
-;; data maps
-;;
+;; Remove a supplier from verified list
+(define-public (remove-supplier (supplier-address principal))
+  (begin
+    (asserts! (is-admin) (err ERR-NOT-AUTHORIZED))
+    (asserts! (default-to false (map-get? verified-suppliers supplier-address))
+              (err ERR-NOT-FOUND))
+    (ok (map-set verified-suppliers supplier-address false))))
 
-;; public functions
-;;
+;; Check if a supplier is verified
+(define-read-only (is-verified-supplier (supplier-address principal))
+  (default-to false (map-get? verified-suppliers supplier-address)))
 
-;; read only functions
-;;
-
-;; private functions
-;;
-
+;; Transfer admin rights
+(define-public (transfer-admin (new-admin principal))
+  (begin
+    (asserts! (is-admin) (err ERR-NOT-AUTHORIZED))
+    (ok (var-set admin new-admin))))
